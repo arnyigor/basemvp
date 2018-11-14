@@ -1,4 +1,4 @@
-package com.arny.basemvp.data.interfaces;
+package com.arny.basemvp.data.dialogs;
 
 public interface ConfirmDialogListener {
 	void onConfirm();

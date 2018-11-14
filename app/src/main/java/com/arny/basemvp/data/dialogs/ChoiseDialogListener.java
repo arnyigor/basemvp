@@ -1,4 +1,4 @@
-package com.arny.basemvp.data.interfaces;
+package com.arny.basemvp.data.dialogs;
 
 import org.jetbrains.annotations.Nullable;
 public interface ChoiseDialogListener {

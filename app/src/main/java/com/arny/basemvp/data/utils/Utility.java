@@ -1,16 +1,20 @@
 package com.arny.basemvp.data.utils;
 
+import android.app.Activity;
+import android.app.ActivityManager;
 import android.content.Context;
+import android.database.Cursor;
+import android.database.DatabaseUtils;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.support.annotation.NonNull;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import io.reactivex.*;
-import io.reactivex.Observable;
-import io.reactivex.android.schedulers.AndroidSchedulers;
-import io.reactivex.schedulers.Schedulers;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -20,7 +24,15 @@ import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -202,21 +214,38 @@ public class Utility {
 		return arr;
 	}
 
-	public static boolean empty(Object obj) {
+    public static boolean empty(Object obj) {
 		if (obj == null) {
 			return true;
 		} else {
 			if (obj instanceof String) {
 				String s = (String) obj;
 				return s.trim().equals("null") || s.trim().isEmpty();
-			} else if (obj instanceof List) {
-				return ((List) obj).isEmpty();
-			} else {
+			}else if (obj instanceof List) {
+                return ((List) obj).isEmpty();
+            } else {
 				return false;
 			}
 		}
 	}
 
+	public static Boolean isRequestSuccess(JSONObject result) {
+		try {
+			return Boolean.valueOf(result.getString("success"));
+		} catch (JSONException e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+
+	public static Boolean isRequestSuccess(JSONObject result, String strResponseKey, String strResponseVal) {
+		try {
+			return result.getString(strResponseKey).equals(strResponseVal);
+		} catch (JSONException e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
 
 	public static String clearNullString(String input) {
 		if (Utility.empty(input) || input.equals("null")) return "";
@@ -356,6 +385,27 @@ public class Utility {
 		return list;
 	}
 
+	public static Boolean getFullEquals(Object parent, Object other) {
+		if (other == null) return false;
+		if (!other.getClass().getSimpleName().equals(parent.getClass().getSimpleName())) return false;
+		Collection<Field> fieldsP = getFields(parent.getClass());
+		if (fieldsP.size() != getFields(other.getClass()).size()) return false;
+		for (Field fieldP : fieldsP) {
+			fieldP.setAccessible(true);
+			try {
+				Object o = fieldP.get(parent);
+				Object o2 = fieldP.get(other);
+				boolean equals = o.equals(o2);
+				if (!equals) return false;
+			} catch (Exception e) {
+				e.printStackTrace();
+				return false;
+			}
+			fieldP.setAccessible(false);
+		}
+		return true;
+	}
+
 	public static String getFields(Object o) {
 		Collection<Field> fields = getFields(o.getClass());
 		StringBuilder builder = new StringBuilder();
@@ -415,42 +465,31 @@ public class Utility {
 		return builder.toString();
 	}
 
-	public static <T>  Observable<T> IOThreadObservable( Observable<T> observable) {
-		return observable.subscribeOn(Schedulers.io());
+	public static String dumpCursor(Cursor cursor) {
+		return DatabaseUtils.dumpCursorToString(cursor);
 	}
 
-	public static <T> Observable<T> IOThreadObservable(Scheduler scheduler, Observable<T> observable) {
-		return observable.subscribeOn(scheduler);
+	public static boolean isConnected(Context context) {
+		ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+		if (connectivityManager != null) {
+			NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+			return !(networkInfo == null || !networkInfo.isConnected() || !networkInfo.isAvailable());
+		}
+		return false;
 	}
 
-	public static <T> Observable<T> observeOnMainThread(Observable<T> observable) {
-		return observable.observeOn(AndroidSchedulers.mainThread());
+	public static synchronized boolean isMyServiceRunning(Class<?> serviceClass, Context context) {
+		ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+		if (manager != null) {
+			for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+				String className = service.service.getClassName();
+				if (serviceClass.getName().equals(className)) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
-
-	public static <T> Observable<T> mainThreadObservable(Observable<T> observable) {
-		return observable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread());
-	}
-
-	public static <T> Single<T> mainThreadObservable(Single<T> observable) {
-		return mainThreadObservable(Schedulers.io(), observable);
-	}
-
-	public static <T> Single<T> mainThreadObservable(Scheduler scheduler, Single<T> observable) {
-		return observable.subscribeOn(scheduler).observeOn(AndroidSchedulers.mainThread());
-	}
-
-	public static <T> Observable<T> mainThreadObservable(Scheduler scheduler, Observable<T> observable) {
-		return observable.subscribeOn(scheduler).observeOn(AndroidSchedulers.mainThread());
-	}
-
-	public static <T> Flowable<T> mainThreadObservable(Flowable<T> flowable) {
-		return flowable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread());
-	}
-
-	public static <T> Flowable<T> mainThreadObservable(Scheduler scheduler, Flowable<T> flowable) {
-		return flowable.subscribeOn(scheduler).observeOn(AndroidSchedulers.mainThread());
-	}
-
 
 	@NonNull
 	public static <T> ArrayList<T> getListCopy(List<T> list) {
@@ -479,10 +518,10 @@ public class Utility {
 		StringBuilder res = new StringBuilder();
 		for (T s : tList) {
 			res.append(s.toString());
-			res.append(",");
-		}
-		res.delete(res.length() - 1, res.length());
-		return res.toString();
+            res.append(",");
+        }
+        res.delete(res.length() - 1, res.length());
+        return res.toString();
 	}
 
 	@NonNull
@@ -501,13 +540,45 @@ public class Utility {
 		return Thread.currentThread().getName();
 	}
 
-	public static boolean isConnected(Context context) {
-		ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-		if (connectivityManager != null) {
-			NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
-			return !(networkInfo == null || !networkInfo.isConnected() || !networkInfo.isAvailable());
+	public static void hideSoftKeyboard(Context context) {
+		InputMethodManager systemService = (InputMethodManager) context.getSystemService(Activity.INPUT_METHOD_SERVICE);
+		if (systemService != null) {
+			systemService.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, 0);
 		}
-		return false;
 	}
+
+	public static void showSoftKeyboard(Context context) {
+		InputMethodManager systemService = (InputMethodManager) context.getSystemService(Activity.INPUT_METHOD_SERVICE);
+		if (systemService != null) {
+			systemService.toggleSoftInput(0, InputMethodManager.HIDE_IMPLICIT_ONLY);
+		}
+	}
+
+	private void hideSystemUI(Activity activity) {
+        // Enables regular immersive mode.
+        // For "lean back" mode, remove SYSTEM_UI_FLAG_IMMERSIVE.
+        // Or for "sticky immersive," replace it with SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        View decorView = activity.getWindow().getDecorView();
+        decorView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_IMMERSIVE
+                        // Set the content to appear under the system bars so that the
+                        // content doesn't resize when the system bars hide and show.
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        // Hide the nav bar and status bar
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN);
+    }
+    // Shows the system bars by removing all the flags
+
+	// except for the ones that make the content appear under the system bars.
+    private void showSystemUI(Activity activity) {
+        View decorView = activity.getWindow().getDecorView();
+        decorView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+    }
 
 }
