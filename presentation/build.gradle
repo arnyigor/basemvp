@@ -38,6 +38,13 @@ dependencies {
     implementation project(path: ':domain')
     implementation project(path: ':data')
     implementation deps.kotlin.stdlib
+    //tests
+    implementation deps.test.junit
+    androidTestImplementation deps.test.runner
+    androidTestImplementation deps.test.rules
+    implementation deps.test.assertjCore
+    androidTestImplementation deps.test.assertjAndroid
+    androidTestImplementation deps.test.assertjSupport
     /*support*/
     implementation deps.support.appCompat
     implementation deps.support.design
