@@ -1,0 +1,57 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-kapt'
+android {
+    compileSdkVersion versions.compileSdk
+    buildToolsVersion versions.buildTools
+    defaultConfig {
+        minSdkVersion versions.minSdk
+        targetSdkVersion versions.targetSdk
+        applicationId "com.arny.basemvp"
+        versionCode 100
+        versionName "1.0.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            debuggable false
+        }
+        debug {
+            debuggable true
+        }
+    }
+    compileOptions {
+        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_1_8
+    }
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+            returnDefaultValues = true
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation project(path: ':helpers')
+    implementation project(path: ':domain')
+    implementation project(path: ':data')
+    implementation deps.kotlin.stdlib
+    /*support*/
+    implementation deps.support.appCompat
+    implementation deps.support.design
+    implementation deps.support.support
+    implementation deps.support.constraint
+    implementation deps.facebook.stetho
+    //di
+    implementation deps.google.dagger
+    kapt deps.google.daggerCompiler
+    //mvp
+    implementation deps.additional.moxy
+    kapt deps.additional.moxyCompiler
+    implementation deps.additional.moxyAppCompat
+    implementation deps.additional.moxyAndroid
+}
+
+apply plugin: 'kotlin-android-extensions'
